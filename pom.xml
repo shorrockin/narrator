@@ -173,5 +173,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.scala-tools.testing</groupId>
+            <artifactId>specs</artifactId>
+            <version>1.6.2.1</version> <!-- specify the version here -->
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 </project>

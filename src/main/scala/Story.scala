@@ -11,7 +11,7 @@ class Story {
   var during = List[Action]()
   var after  = List[Action]()
 
-  implicit def stringToAction(str:String) = Action(str)
+  
 
   
 }
