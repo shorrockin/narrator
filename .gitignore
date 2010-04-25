@@ -6,3 +6,4 @@ out/
 lib_managed/
 project/boot/
 narrator.iml
+logs/

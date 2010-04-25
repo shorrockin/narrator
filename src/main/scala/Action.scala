@@ -1,14 +1,6 @@
 package com.shorrockin.narrator
 
 /**
- * companion class for action which contains all the implicits necessary to
- * create actions from simple syntax.
- */
-trait ActionCreator {
-  implicit def stringToAction(str:String) = new Action(str)
-}
-
-/**
  * An action is executed within the context of a story.
  *
  * @author Chris Shorrock

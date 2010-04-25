@@ -149,6 +149,12 @@
             <url>http://maven.shorrockin.com/</url>
         </repository>
 
+        <repository>
+            <id>akka</id>
+            <name>Akka Repository</name>
+            <url>http://www.scalablesolutions.se/akka/repository/</url>
+        </repository>
+
     </repositories>
 
     <dependencies>
@@ -162,6 +168,12 @@
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
             <version>1.2.14</version>
+        </dependency>
+
+        <dependency>
+            <groupId>se.scalablesolutions.akka</groupId>
+            <artifactId>akka-core_2.7.7</artifactId>
+            <version>0.7</version>
         </dependency>
 
         <!-- test scoped dependencies below -->
