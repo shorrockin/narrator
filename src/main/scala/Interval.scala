@@ -23,6 +23,11 @@ class Interval(val start:Int) {
   var end:Option[Int] = None
   var unit:TimeUnit = TimeUnit.MILLISECONDS
 
+  def nextDelay = end match {
+    case None    => start
+    case Some(e) => start + Random.nextInt(e - start)
+  }
+
   def minutes = asChained { unit = TimeUnit.MINUTES }
   def mins = asChained { unit = TimeUnit.MINUTES }
   def msecs = asChained { unit = TimeUnit.MILLISECONDS }
@@ -30,3 +35,6 @@ class Interval(val start:Int) {
 
   private def asChained[E](f: => Unit) = { f ; this }
 }
+
+
+object Random extends Random

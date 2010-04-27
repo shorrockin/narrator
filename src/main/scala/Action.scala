@@ -6,7 +6,7 @@ package com.shorrockin.narrator
  * @author Chris Shorrock
  */
 class Action(val description:String) {
-  var worker:Option[() => Unit] = None
+  var worker:Option[() => Unit]   = None
   var interval:Option[Interval] = None
   var follows:Option[String]    = None
 

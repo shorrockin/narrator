@@ -72,8 +72,4 @@ class StorySpec extends Specification {
       story.stopActions.size must beEqual(0)
     }    
   }
-
-
-  
-
 }
