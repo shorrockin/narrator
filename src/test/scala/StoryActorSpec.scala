@@ -6,7 +6,7 @@ import com.shorrockin.narrator.StoryActor.{Stop, Start}
 class StoryActorSpec extends Specification {
   "a story actor" can {
     "detect invalid action order declarations" in {
-      val story = new Story {
+      val story = new Story(1, Map[String, String]()) {
         "startup" as {}
         "interval 1" every (3 minutes) as {}
         "wrong" as {}
@@ -21,7 +21,7 @@ class StoryActorSpec extends Specification {
       var counter = Map[String, Int]()
       def inc(str:String) { counter = counter + (str -> (counter.getOrElse(str, 0) + 1)) }
 
-      val story = new Story {
+      val story = new Story(1, Map[String, String]()) {
         "startup 1" as { inc("startup 1") }
         "startup 2" as { inc("startup 2") }
         

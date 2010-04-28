@@ -37,4 +37,4 @@ class Interval(val start:Int) {
 }
 
 
-object Random extends Random
+object Random extends java.util.Random

@@ -6,7 +6,7 @@ package com.shorrockin.narrator
  *
  * @author Chris Shorrock 
  */
-class Story extends IntervalCreator {
+class Story(val id:Int, val config:Map[String, String]) extends IntervalCreator {
   private var actions = List[Action]()
   private var _locked  = false
 
@@ -40,12 +40,6 @@ class Story extends IntervalCreator {
    * locks this story and exectues the action
    */
   private def lock[E](f: => E):E = this.synchronized { _locked = true ; f }
-
-
-
-  
-
-  
 }
 
 

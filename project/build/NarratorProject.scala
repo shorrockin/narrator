@@ -5,6 +5,7 @@ class NarratorProject(info:ProjectInfo) extends DefaultProject(info) {
 
   // taken from the akka project, as the pom in the repo does not appear to
   // include them.
+  val akka = "akka" at "http://www.scalablesolutions.se/akka/repository/"
   val sunjdmk = "sunjdmk" at "http://wp5.e-taxonomy.eu/cdmlib/mavenrepo"
   val databinder = "DataBinder" at "http://databinder.net/repo"
   val configgy = "Configgy" at "http://www.lag.net/repo"

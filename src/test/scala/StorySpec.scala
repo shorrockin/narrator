@@ -6,7 +6,7 @@ class StorySpec extends Specification {
 
   "a story" can {
     "contain many ordered actions" in {
-      val story = new Story {
+      val story = new Story(1, Map[String, String]()) {
         "execute this action first" as { println("first") }
         "execute this after" every (3 minutes) as { println("second") }
         "finally do this" as { println("third") }
@@ -20,10 +20,8 @@ class StorySpec extends Specification {
   }
 
   "a story" should {
-    "have a access to a unique story identifier" in {}
-
     "detect duplication actions" in {
-      def generate = new Story {
+      def generate = new Story(1, Map[String, String]()) {
         "action a" as {}
         "action a" as {}
       }
@@ -32,7 +30,7 @@ class StorySpec extends Specification {
     }
 
     "split actions into start, main, and finish actions" in {
-      val story = new Story {
+      val story = new Story(1, Map[String, String]()) {
         "first action" as {}
         "second first action" as {}
         "main action 1" every (3 msecs) as {}
@@ -49,7 +47,7 @@ class StorySpec extends Specification {
     }
 
     "detect all start actions" in {
-      val story = new Story {
+      val story = new Story(1, Map[String, String]()) {
         "first action" as {}
         "second action" as {}
       }
@@ -61,7 +59,7 @@ class StorySpec extends Specification {
     }
 
     "detect no start actions" in {
-      val story = new Story {
+      val story = new Story(1, Map[String, String]()) {
         "main action" every (3 msecs) as {}
         "other main action" every (10 minutes) as {}
       }

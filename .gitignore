@@ -7,3 +7,5 @@ lib_managed/
 project/boot/
 narrator.iml
 logs/
+sbt.bat
+sbt-launch-0.7.3.jar
