@@ -1,21 +1,19 @@
 package com.shorrockin.narrator
 
-import se.scalablesolutions.akka.actor.{Scheduler, Actor}
-import java.util.concurrent.Executors
+import se.scalablesolutions.akka.actor.{Actor}
+import java.util.concurrent.{ScheduledThreadPoolExecutor}
+import java.io.Serializable
 
-object StoryActor {
-  // enum to define the various modes that a story actor may have.
-  trait StoryMode
-  case object StartMode extends StoryMode
-  case object MainMode  extends StoryMode
-  case object StopMode  extends StoryMode
+object Scheduler extends ScheduledThreadPoolExecutor(8) 
 
-  case class Start()
-  case class Stop()
-  case class Perform(action:Action)  
+trait StoryMode
+case object StartMode extends StoryMode
+case object MainMode  extends StoryMode
+case object StopMode  extends StoryMode
 
-  val service = Executors.newSingleThreadScheduledExecutor()
-}
+case object Start
+case object Stop
+case class Perform(action:Action)
 
 /**
  * a story actor is responsible for scheduling and running the actions
@@ -23,8 +21,7 @@ object StoryActor {
  *
  * @author Chris Shorrock
  */
-class StoryActor(story:Story) extends Actor {
-  import StoryActor._
+class StoryActor(val story:Story) extends Actor {
   import story._
 
   startActions.foreach { action =>
@@ -79,7 +76,7 @@ class StoryActor(story:Story) extends Actor {
    */
   private def schedule(action:Action) = action.interval match {
     case None    => this ! Perform(action)
-    case Some(i) => service.schedule(runnables(action), i.nextDelay, i.unit)
+    case Some(i) => Scheduler.schedule(runnables(action), i.nextDelay, i.unit)
   }
 
 

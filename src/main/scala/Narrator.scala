@@ -3,24 +3,37 @@ package com.shorrockin.narrator
 import scala.{Option, None, Some}
 import org.apache.commons.cli.{Option => CliOption}
 import org.apache.commons.cli._
+import java.io.Serializable
+import java.util.concurrent.TimeUnit
+import utils.Logging
+import org.apache.commons.logging.LogFactory
+import org.apache.log4j.{Level, LogManager}
 
 /**
  * narrator object acts as the entry point for our application
  */ 
-trait Narrator extends WorkloadGenerator {
+trait Narrator extends WorkloadGenerator with Logging {
 
   import OptionBuilder._
-  private val defaultOptions = { withArgName("host")
+  private val defaultOptions = { withArgName("ip address")
                                  hasArgs()
                                  isRequired()
                                  withDescription("the host address this process should bind to")
                                  create("host") } ::
-                               { withArgName("port")
+                               { withArgName("port number")
                                  hasArgs()
                                  isRequired()
                                  withDescription("the port value that we should bind to")
                                  create("port") } ::
-                               { withArgName("servers")
+                               { withArgName("msecs")
+                                 hasArgs()
+                                 withDescription("the number of msecs that this should run before shutting down, if not specified runs forever")
+                                 create("duration") } ::
+                               { withArgName("logging level")
+                                 hasArgs()
+                                 withDescription("the logging level to use on the root log4j logger")
+                                 create("log") } ::
+                               { withArgName("server list")
                                  hasArgs()
                                  withDescription("a list of servers that should execute our stories. if this value is not specified that this process will act as a slave process.")
                                  create("servers") } :: Nil
@@ -44,6 +57,11 @@ trait Narrator extends WorkloadGenerator {
 
     try {
       clOpt = Some(new GnuParser().parse(opts, args))
+
+      if (exists("log")) {
+        val logger = LogManager.getRootLogger
+        logger.setLevel(Level.toLevel(value("log")))
+      }
 
       if (exists("servers")) startMaster()
       else startSlave()
@@ -71,6 +89,13 @@ trait Narrator extends WorkloadGenerator {
     val master = new MasterActor(value("host"), value("port").toInt, slaves, this)
     shutdown = { () => { master.stop } } :: shutdown
     master.start
+
+    if (exists("duration")) {
+      val duration = value("duration").toLong
+      
+      logger.debug("scheduling narrator to shutdown in %s msces".format(duration))
+      Scheduler.schedule(new Runnable() { def run() = { stop() } }, duration, TimeUnit.MILLISECONDS)
+    }
   }
 
 
@@ -142,7 +167,7 @@ case class Slave(val host:String, val port:Int)
 /**
  * defines a unit of work assigned to a slave
  */
-case class Workload(val story:Class[_], val startId:Int, val endId:Int, val params:Map[String, String]) {}
+case class Workload(val story:Class[_], val start:Int, val end:Int, val params:Map[String, String]) {}
 
 
 /**

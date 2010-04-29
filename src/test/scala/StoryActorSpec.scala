@@ -1,7 +1,6 @@
 package com.shorrockin.narrator
 
 import org.specs.Specification
-import com.shorrockin.narrator.StoryActor.{Stop, Start}
 
 class StoryActorSpec extends Specification {
   "a story actor" can {

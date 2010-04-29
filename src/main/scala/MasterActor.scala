@@ -13,7 +13,7 @@ import utils.Logging
  * @author Chris Shorrock
  */
 class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:WorkloadGenerator) extends Actor with Logging {
-  def this() = this(null, -1, Nil, null)
+  def this() = this("proxy-master-actor", 0, Nil, null)
 
   private lazy val slaveActors = Map(slaves.map { (slave) =>
     val actor = RemoteClient.actorFor("slave", slave.host, slave.port)
@@ -29,7 +29,7 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
    */
   def receive = {
     case ReadyToStart(source) =>
-      logger.debug("recieved ready to start message from: " + source)
+      logger.info("recieved ready to start message from: " + source)
       ready = source :: ready
       if (ready.length == slaves.length) { slaves.foreach { slaveActors(_) ! StartWork() } }
   }
@@ -40,7 +40,7 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
    * as the remote actor registration.
    */
   override def start = {
-    logger.debug("starting master actor on %s:%s".format(host, port))
+    logger.info("starting master actor on %s:%s".format(host, port))
     super.start
 
     RemoteNode.start("127.0.0.1", 1234)
@@ -50,7 +50,7 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
       val workload = workGenerator.generateWorkload(slave)
       val actor    = slaveActors(slave)
 
-      logger.debug("sending work load registration of %s to %s".format(workload, slave))
+      logger.info("sending work load registration of %s to %s".format(workload, slave))
       actor ! RegisterWork((host -> port), slave, workload)
     }
 
@@ -62,8 +62,14 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
    * stops this actor and shuts down the remote node
    */
   override def stop {
-    logger.debug("stopping master actor on %s:%s".format(host, port))
+    logger.info("stopping master actor on %s:%s".format(host, port))
     super.stop
+
+    slaveActors.foreach { actor =>
+      try { actor._2 ! Stop }
+      catch { case e:Exception => logger.warn("error occured while shutting down remote slave actor: " + actor._1, e) }
+    }
+    
     RemoteNode.shutdown
   }
 }

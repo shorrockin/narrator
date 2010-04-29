@@ -1,0 +1,130 @@
+h3. Narrator - Load Testing Through Story Telling
+
+|_. Primary Author|Chris Shorrock|
+|_. Home Page|"http://wiki.github.com/shorrockin/narrator/":http://wiki.github.com/shorrockin/narrator/|
+|_. Stable Version|N/A|
+|_. Snapshot Version|1.0-SNAPSHOT (useable - still under development)|
+|_. Scala Version|2.7.7|
+
+h3. Description:
+
+Narrator is a scala based framework for building high-concurrency load-testing applications that utilizes "stories" to generate load. Traditional load-testing involves writing a script which executes some unit of code in a tight loop over N threads. While this does produce load it is not indicitive of how users actually utliize a product, and as such, it can often be a poor metric of how an application performs. 
+
+Narrator is typically used for load-testing web service apis however the api is not limited by that so you're free to utilize it for whatever you like.w
+
+Using Narrator you construct simple stories which are then ran in massive numbers across multiple machines (utilizing Akka to massively distribute workload across the cluster). Narrator takes care of the workload distribution across a cluster of computers, while making the means by which you construct your stories very simple.
+
+h3. Getting Starting
+
+To get started with Narrator you must code two parts:
+
+ # customized narrator bootstrap
+ # user stories
+
+The bootstrap acts as your entry point into narrator and offers several levels of configuration while the stories are your client stories which get executed by all the client nodes in parallel.
+
+h5. Customized Narrator Bootstrap
+
+First you must create the entry point to your application which utilizes the narrator trait. The trait provides the ability to customize the input parameters accepted into the framework, as well as customize as how work is distributed by all the slaves. To do so you typically would do something like the following:
+
+<pre>
+<code>
+object SampleApplication extends Narrator with BalancedWorkloadGenerator {
+  def main(args:Array[String]) = init(args)
+  lazy val stories = (classOf[SampleStory], 10000, Map[String, String]()) :: Nil
+}
+</code>
+</pre>
+
+In this code we delegate the entry point (main method) to the init method of the Narratar trait. We also use the BalancedWorkloadGenerator to automatically split the load between evenly between all the slaves we have attached. In this scenario we'll create 10,000 instances of the story 'SampleStory' and pass each instance an empty Map as it's configuration (this, of course, can be customized). Stories returns a Seq allowing you to execute multiple stories in parallel.
+
+When you produce this you may also customize the command line options that your load test application takes in by providing an implementation of the options method. The values returned will be appended to the default options. This is a convienent way to make configurable command line parameters that get passed to your story through the Map[String, String], or for example, define how many instances of a given story you wish to run.
+
+h5. User Stories
+
+The bootstrap returns all the stories which are executed. Each story must be an instance of the story class. Stories take in identifier (if you run 10k stories, each instance of the story will have one of the ids between 0 and 10k), and the Map containing whatever configuration is needed.
+
+Stories have 3 parts:
+ * code which runs on start
+ * code which runs on interval
+ * code which runs at the end of the test
+
+And these parts have to be coded in order. Narrator provides a simple and readable means to define this. For example, a simple story may read:
+
+<pre>
+<code>
+class SampleStory(id:Int, config:Map[String, String]) extends Story(id, config) with Logging {
+  var counter = 0
+
+  "start by saying hello" as {
+    logger.debug("[%s] is starting up and saying 'hello world'".format(id))
+  }
+
+  "continue saying 'this is a sample application'" every (5 to 20 seconds) as {
+    counter = counter + 1
+    logger.debug("[%s] 'this is a sample application' is executing this every 5 to 20 seconds, and have done so %s times before".format(id, counter))
+  }
+
+  "finish up with a goodbye" as {
+    logger.debug("[%s] is shutting down and saying 'goodbye'".format(id))
+  }
+}
+</code>
+</pre>
+
+In this example the story has 3 actions. 1 which is ran once at start, one which is ran every 5 to 20 seconds for the duration of our tests, and one which runs at the end.
+
+For the interval actions you can either specify a range to execute the given task in, or specify a fixed value. The time period can be seconds, msecs, or minutes.
+
+h3. Running Narrator
+
+Once you've created your bootstrap and the stories you wish to execute you can run your tests. At current you must start the slaves first, then the master node. Slaves are simple to start have host and port as required parameters with log (level) as a default parameter.
+
+<pre>
+<code>
+java YourApplication -host 10.10.78.113 -port 1234 -log INFO
+</code>
+</pre>
+
+Which will start a slave bound to the specified host and port. Please note that this address must be reachable from where you are running your master node. A master node must take in a host, port and a list of slave addresses. It can optionally take in a log (level) and a duration which defines the amount of time (in msecs) that it should run for.
+
+<pre>
+<code>
+java YourApplication -host 10.10.78.113 -port 1235 -log INFO -duration 100000 -servers 10.10.78.113:1234 10.10.78.114:1234 10.10.78.115:1234
+</code>
+</pre>
+
+h3. Wishlist
+
+ * need to be able to specify a range of when an interval should first start 
+ * narrator should run in a more scripted mode instead of a mode which requires application construction
+ * metrics should be gathered and aggregated from all slave nodes
+
+h3. Known Issues
+
+ * metrics gathering from slave nodes
+ * requiring slaves to start before master nodes
+ * slaves must be restarted between uses
+ * number of threads used not currently configurable
+
+h3. Maven Information
+
+<pre>
+<code class="xml">
+  <dependencies>
+    <dependency>
+      <groupId>com.shorrockin</groupId>
+      <artifactId>narrator</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+
+  <repositories>
+    <repository>
+      <id>shorrockin.com</id>
+      <name>Shorrockin Repository</name>
+      <url>http://maven.shorrockin.com/</url>
+    </repository>
+  </repositories>
+</code>
+</pre>
