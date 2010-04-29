@@ -1,26 +1,8 @@
 package com.shorrockin.narrator
 
-import se.scalablesolutions.akka.remote.RemoteNode
 import se.scalablesolutions.akka.actor.Actor
-
-/**
- * defines the location of a slave actor
- */
-case class Slave(val host:String, val port:Int)
-
-
-/**
- * defines a unit of work assigned to a slave
- */
-case class Workload(val story:Class[Story], val ids:Range, val params:Map[String, String])
-
-
-/**
- * simple trait used to retrieve the amount of work to give a slave server.
- */
-trait SlaveWorkloadGenerator {
-  def generateWorkload(slave:Slave):Seq[Workload]
-}
+import se.scalablesolutions.akka.remote.{RemoteClient, RemoteNode}
+import utils.Logging
 
 
 /**
@@ -30,13 +12,26 @@ trait SlaveWorkloadGenerator {
  *
  * @author Chris Shorrock
  */
-class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:SlaveWorkloadGenerator) extends Actor {
+class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:WorkloadGenerator) extends Actor with Logging {
+  def this() = this(null, -1, Nil, null)
+
+  private lazy val slaveActors = Map(slaves.map { (slave) =>
+    val actor = RemoteClient.actorFor("slave", slave.host, slave.port)
+    (slave -> actor)
+  }:_*)
+
+
+  private var ready = List[Slave]()
+  
 
   /**
    * called by akka to received the event
    */
   def receive = {
-    case "meep" =>
+    case ReadyToStart(source) =>
+      logger.debug("recieved ready to start message from: " + source)
+      ready = source :: ready
+      if (ready.length == slaves.length) { slaves.foreach { slaveActors(_) ! StartWork() } }
   }
 
 
@@ -45,9 +40,20 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:SlaveW
    * as the remote actor registration.
    */
   override def start = {
+    logger.debug("starting master actor on %s:%s".format(host, port))
     super.start
-    RemoteNode.start(host, port)
+
+    RemoteNode.start("127.0.0.1", 1234)
     RemoteNode.register("master", this)
+
+    slaves.foreach { (slave) =>
+      val workload = workGenerator.generateWorkload(slave)
+      val actor    = slaveActors(slave)
+
+      logger.debug("sending work load registration of %s to %s".format(workload, slave))
+      actor ! RegisterWork((host -> port), slave, workload)
+    }
+
     this
   }
 
@@ -56,9 +62,8 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:SlaveW
    * stops this actor and shuts down the remote node
    */
   override def stop {
+    logger.debug("stopping master actor on %s:%s".format(host, port))
     super.stop
     RemoteNode.shutdown
   }
-
-
 }

@@ -32,6 +32,8 @@ class Interval(val start:Int) {
   def mins = asChained { unit = TimeUnit.MINUTES }
   def msecs = asChained { unit = TimeUnit.MILLISECONDS }
   def milliseconds = asChained { unit = TimeUnit.MILLISECONDS }
+  def secs = asChained { unit = TimeUnit.SECONDS }
+  def seconds = asChained { unit = TimeUnit.SECONDS }
 
   private def asChained[E](f: => Unit) = { f ; this }
 }

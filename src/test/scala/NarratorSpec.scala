@@ -11,13 +11,13 @@ class NarratorSpec extends Specification {
         def generateWorkload(slave:Slave) = List[Workload]()
       }
 
-      narrator.init(args("-foo foovalue -host 1.2.3.4 -port 1234"))
+      narrator.init(args("-foo foovalue -host 127.0.0.1 -port 9876"))
       narrator.stop
       
       narrator.exists("host") must beEqual(true)
       narrator.exists("blah") must beEqual(false)
       narrator.exists("foo") must beEqual(true)
-      narrator.value("host") must beEqual("1.2.3.4")
+      narrator.value("host") must beEqual("127.0.0.1")
       narrator.value("foo") must beEqual("foovalue")
     }
 
@@ -30,19 +30,6 @@ class NarratorSpec extends Specification {
     }
 
 
-    "be able to extract multiple slave server addresses" in {
-      val narrator = new Narrator {
-        def generateWorkload(slave:Slave) = List[Workload]()
-      }
-      narrator.init(args("-host 127.0.0.1 -port 1234 -servers 1.2.3.4:9999 5.6.7.8:8888"))
-      narrator.stop
-      
-      val servers = narrator.values("servers")
-      servers.length must beEqual(2)
-      servers(0) must beEqual("1.2.3.4:9999")
-      servers(1) must beEqual("5.6.7.8:8888")
-    }
-
     "be able to display help" in {
       val narrator = new Narrator {
         override def options = new CliOption("foo", "foo", true, "description of foo here") :: Nil
@@ -53,10 +40,6 @@ class NarratorSpec extends Specification {
       
       narrator.initialized must beEqual(false)
     }
-    
-    "start as a master node" in {}
-
-    "start as a slave node" in {}
   }
 
 

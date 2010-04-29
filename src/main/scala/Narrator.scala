@@ -7,7 +7,7 @@ import org.apache.commons.cli._
 /**
  * narrator object acts as the entry point for our application
  */ 
-trait Narrator extends SlaveWorkloadGenerator {
+trait Narrator extends WorkloadGenerator {
 
   import OptionBuilder._
   private val defaultOptions = { withArgName("host")
@@ -27,6 +27,11 @@ trait Narrator extends SlaveWorkloadGenerator {
 
   private var clOpt:Option[CommandLine] = None
   private var shutdown = List[() => Unit]()
+
+  lazy val slaves =  values("servers").map { server =>
+    val split = server.split(":")
+    Slave(split(0), split(1).toInt)
+  }
 
   /**
    * main entry point for the narrator, extracts and parses the arguments
@@ -63,10 +68,6 @@ trait Narrator extends SlaveWorkloadGenerator {
    * starts this as a master node
    */
   def startMaster() {
-    val slaves = values("servers").map { server =>
-      val split = server.split(":")
-      Slave(split(0), split(1).toInt)
-    }
     val master = new MasterActor(value("host"), value("port").toInt, slaves, this)
     shutdown = { () => { master.stop } } :: shutdown
     master.start
@@ -77,6 +78,9 @@ trait Narrator extends SlaveWorkloadGenerator {
    * starts this as a slave mode
    */
   def startSlave() {
+    val slave = new SlaveActor(value("host"), value("port").toInt)
+    shutdown = { () => { slave.stop } } :: shutdown
+    slave.start
   }
 
 
@@ -126,4 +130,24 @@ trait Narrator extends SlaveWorkloadGenerator {
    * override to allow additional properties to be specified from the command line.
    */
   def options:Seq[CliOption] = Nil
+}
+
+
+/**
+ * defines the location of a slave actor
+ */
+case class Slave(val host:String, val port:Int)
+
+
+/**
+ * defines a unit of work assigned to a slave
+ */
+case class Workload(val story:Class[_], val startId:Int, val endId:Int, val params:Map[String, String]) {}
+
+
+/**
+ * simple trait used to retrieve the amount of work to give a slave server.
+ */
+trait WorkloadGenerator {
+  def generateWorkload(slave:Slave):Seq[Workload]
 }
