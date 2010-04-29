@@ -43,7 +43,7 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
     logger.info("starting master actor on %s:%s".format(host, port))
     super.start
 
-    RemoteNode.start("127.0.0.1", 1234)
+    RemoteNode.start(host, port)
     RemoteNode.register("master", this)
 
     slaves.foreach { (slave) =>
