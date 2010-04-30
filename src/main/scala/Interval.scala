@@ -36,6 +36,11 @@ class Interval(val start:Int) {
   def seconds = asChained { unit = TimeUnit.SECONDS }
 
   private def asChained[E](f: => Unit) = { f ; this }
+
+  override def toString = end match {
+    case None    => "Interval[start: %s, unit: %s]".format(start, unit)
+    case Some(e) => "Interval[start: %s, end: %s, unit: %s]".format(start, e, unit)
+  }
 }
 
 

@@ -72,6 +72,5 @@ class SlaveActor(host:String, port:Int) extends Actor with Logging {
     logger.info("shutting down slave actor on %s:%s".format(host, port))
     super.stop
     stories.foreach { _ ! Stop }
-    RemoteNode.shutdown
   }  
 }

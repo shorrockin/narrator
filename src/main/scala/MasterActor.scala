@@ -69,7 +69,5 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
       try { actor._2 ! Stop }
       catch { case e:Exception => logger.warn("error occured while shutting down remote slave actor: " + actor._1, e) }
     }
-    
-    RemoteNode.shutdown
   }
 }

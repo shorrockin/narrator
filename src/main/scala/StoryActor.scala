@@ -29,6 +29,7 @@ class StoryActor(val story:Story) extends Actor {
     if(action.worker.isEmpty) throw new IllegalArgumentException("all actions must contain an executable block")
   }
 
+
   mainActions.foreach { action =>
     if(action.interval.isEmpty) throw new IllegalArgumentException("main actions must define an interval")
     if(action.worker.isEmpty) throw new IllegalArgumentException("all actions must contain an executable block")
@@ -60,11 +61,11 @@ class StoryActor(val story:Story) extends Actor {
   private def process(newMode:StoryMode):Unit = {
     mode = Some(newMode)
     newMode match {
-      case StartMode if (startActions.size > 0) => schedule(startActions(0))
+      case StartMode if (startActions.size > 0) => schedule(startActions(0), true)
       case StartMode => process(MainMode)
-      case MainMode if (mainActions.size > 0) => mainActions.foreach { schedule(_) }
+      case MainMode if (mainActions.size > 0) => mainActions.foreach { schedule(_, true) }
       case MainMode => process(StopMode)
-      case StopMode if (stopActions.size > 0) => schedule(stopActions(0))
+      case StopMode if (stopActions.size > 0) => schedule(stopActions(0), true)
       case StopMode => /* all done */
     }
   }
@@ -74,9 +75,18 @@ class StoryActor(val story:Story) extends Actor {
    * schedules the specified action for execution, either immediately, or within
    * the specified interval.
    */
-  private def schedule(action:Action) = action.interval match {
+  private def schedule(action:Action, initial:Boolean) = action.interval match {
     case None    => this ! Perform(action)
-    case Some(i) => Scheduler.schedule(runnables(action), i.nextDelay, i.unit)
+    case Some(i) => (initial && action.start.isDefined) match {
+      // if this is our initial run we should execute in accordance with our
+      // start parameter, otherwise use the delayed parameter.
+      case true  =>
+        val start = action.start.get
+        Scheduler.schedule(runnables(action), start.nextDelay, start.unit)
+      case false =>
+        Scheduler.schedule(runnables(action), i.nextDelay, i.unit)
+    }
+
   }
 
 
@@ -102,12 +112,12 @@ class StoryActor(val story:Story) extends Actor {
     mode.get match {
       case StartMode => after(action, startActions) match {
         case None    => process(MainMode)
-        case Some(a) => schedule(a) 
+        case Some(a) => schedule(a, true) 
       }
-      case MainMode  => schedule(action)
+      case MainMode  => schedule(action, false)
       case StopMode  => after(action, stopActions) match {
         case None    => /* nothing all done */
-        case Some(a) => schedule(a)
+        case Some(a) => schedule(a, true)
       }
     }
   }

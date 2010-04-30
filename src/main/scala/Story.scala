@@ -19,6 +19,8 @@ class Story(val id:Int, val config:Map[String, String]) extends IntervalCreator 
   def size = actions.size
   def apply(index:Int) = actions(index)
   def find(description:String) = actions.find(_.description.equals(description))
+  def in(start:Interval):StartingAction = StartingAction(start)
+
   
   /**
    * implicitly converts a string into an action and stores it in
@@ -40,6 +42,15 @@ class Story(val id:Int, val config:Map[String, String]) extends IntervalCreator 
    * locks this story and exectues the action
    */
   private def lock[E](f: => E):E = this.synchronized { _locked = true ; f }
+
+
+  /**
+   * a partial action that is used as a building blocks for executing further actions.
+   */
+  case class StartingAction(start:Interval) {
+    def execute(desc:String) = stringToAction(desc).startingIn(start)
+  }
+
 }
 
 

@@ -16,7 +16,7 @@ object SampleApplication extends Narrator with BalancedWorkloadGenerator {
       logger.debug("[%s] is starting up and saying 'hello world'".format(id))
     }
 
-    "continue saying 'this is a sample application'" every (5 to 20 seconds) as {
+    in (0 to 20 msecs) execute "continue saying 'this is a sample application'" every (5 to 20 seconds) as {
       counter = counter + 1
       logger.debug("[%s] is executing this every 5 to 20 seconds, and have done so %s times before".format(id, counter))
     }

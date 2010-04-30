@@ -60,9 +60,9 @@ class SampleStory(id:Int, config:Map[String, String]) extends Story(id, config) 
     logger.debug("[%s] is starting up and saying 'hello world'".format(id))
   }
 
-  "continue saying 'this is a sample application'" every (5 to 20 seconds) as {
+  in (1 to 90 seconds) execute "continue saying 'this is a sample application'" every (5 to 20 minutes) as {
     counter = counter + 1
-    logger.debug("[%s] 'this is a sample application' is executing this every 5 to 20 seconds, and have done so %s times before".format(id, counter))
+    logger.debug("[%s] 'this is a sample application' is executing this every 5 to 20 minutes, and have done so %s times before".format(id, counter))
   }
 
   "finish up with a goodbye" as {
@@ -72,7 +72,7 @@ class SampleStory(id:Int, config:Map[String, String]) extends Story(id, config) 
 </code>
 </pre>
 
-In this example the story has 3 actions. 1 which is ran once at start, one which is ran every 5 to 20 seconds for the duration of our tests, and one which runs at the end.
+In this example the story has 3 actions. 1 which is ran once at start, one which starts (randomly) in 1 to 90 seconds, then continues to repeat itself every 5 to 20 minutes for the duration of our tests, and one which runs at the end.
 
 For the interval actions you can either specify a range to execute the given task in, or specify a fixed value. The time period can be seconds, msecs, or minutes.
 

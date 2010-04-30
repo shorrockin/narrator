@@ -15,6 +15,20 @@ class StoryActorSpec extends Specification {
       def error = new StoryActor(story)
       error must throwA[IllegalArgumentException]
     }
+
+    "utilize start parameter of action to determine start time" in {
+      var counter = 0
+
+      val story = new Story(1, Map[String, String]()) {
+        this.in (3 msecs) execute "start time execution test" every (30 minutes) as { counter = counter + 1 }
+      }
+
+      val actor = new StoryActor(story)
+      actor.start
+      actor.!(Start)(None)
+      Thread.sleep(20)                                                                                                                                       
+      counter must beEqual(1)
+    }
     
     "scheduled and re-schedule interval based actions" in {
       var counter = Map[String, Int]()
@@ -23,8 +37,10 @@ class StoryActorSpec extends Specification {
       val story = new Story(1, Map[String, String]()) {
         "startup 1" as { inc("startup 1") }
         "startup 2" as { inc("startup 2") }
-        
-        "interval 1" every (10 msecs) as { inc("interval 1") }
+
+        // explicitly declare this.in so it doesn't get confused between
+        // the implicit 'in' also in the specification
+        this.in (0 to 3 msecs) execute "interval 1" every (10 msecs) as { inc("interval 1") }
         "interval 2" every (5 to 20 msecs) as { inc("interval 2") }
 
         "shutdown 1" as { inc("shutdown 1") }
