@@ -96,7 +96,6 @@ java YourApplication -host 10.10.78.113 -port 1235 -log INFO -duration 100000 -s
 
 h3. Wishlist
 
- * need to be able to specify a range of when an interval should first start 
  * narrator should run in a more scripted mode instead of a mode which requires application construction
  * metrics should be gathered and aggregated from all slave nodes
 
@@ -104,7 +103,6 @@ h3. Known Issues
 
  * metrics gathering from slave nodes
  * requiring slaves to start before master nodes
- * slaves must be restarted between uses
  * number of threads used not currently configurable
 
 h3. Maven Information

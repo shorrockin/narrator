@@ -1,17 +1,17 @@
 package com.shorrockin.narrator
 
+import _root_.utils.UniqueId
 import se.scalablesolutions.akka.actor.Actor
 import utils.Logging
-import se.scalablesolutions.akka.remote.{RemoteClient, RemoteNode}
 import org.apache.commons.lang.reflect.ConstructorUtils
+import java.util.UUID
 
 /**
  * slave actor is responsible for processing and executing work.
  */
-class SlaveActor(host:String, port:Int) extends Actor with Logging {
-  def this() = this("proxy-slave-actor", 0)
-
+class SlaveActor extends Actor with Logging with UniqueId {
   var stories:List[StoryActor] = Nil
+  id = UUID.randomUUID.toString
 
   /**
    * called by akka to received the event
@@ -27,50 +27,21 @@ class SlaveActor(host:String, port:Int) extends Actor with Logging {
                                                          Array[AnyRef](i.asInstanceOf[java.lang.Integer],
                                                          workload.params)).asInstanceOf[Story]
           val actor = new StoryActor(story)
+          link(actor)
 
           stories = actor :: stories
           actor.start
         }
       }
 
-      master(source) ! ReadyToStart(me)
+      reply(ReadyToStart(me))
 
     case Stop =>
       logger.info("recieved request to stop all stories")
       stories.foreach { _ ! Stop }
 
-    
     case StartWork() =>
       logger.info("recieved request to start doing work")
       stories.foreach { _ ! Start }
   }
-
-
-  /**
-   * returns the master node for the specified source
-   */
-  def master(source:(String, Int)) = RemoteClient.actorFor("master", source._1, source._2)
-
-  
-  /**
-   * overrides the start method to implement the business logic of starting, as well
-   * as the remote actor registration.
-   */
-  override def start = {
-    logger.info("starting slave actor on %s:%s".format(host, port))
-    super.start
-    RemoteNode.start(host, port)
-    RemoteNode.register("slave", this)
-    this
-  }
-
-  
-  /**
-   * stops this actor and shuts down the remote node
-   */
-  override def stop {
-    logger.info("shutting down slave actor on %s:%s".format(host, port))
-    super.stop
-    stories.foreach { _ ! Stop }
-  }  
 }

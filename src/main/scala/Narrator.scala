@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import utils.Logging
 import org.apache.commons.logging.LogFactory
 import org.apache.log4j.{Level, LogManager}
+import se.scalablesolutions.akka.remote.RemoteNode
 
 /**
  * narrator object acts as the entry point for our application
@@ -93,7 +94,7 @@ trait Narrator extends WorkloadGenerator with Logging {
     if (exists("duration")) {
       val duration = value("duration").toLong
       
-      logger.debug("scheduling narrator to shutdown in %s msces".format(duration))
+      logger.info("scheduling narrator to shutdown in %s msces".format(duration))
       Scheduler.schedule(new Runnable() { def run() = { stop() } }, duration, TimeUnit.MILLISECONDS)
     }
   }
@@ -103,9 +104,11 @@ trait Narrator extends WorkloadGenerator with Logging {
    * starts this as a slave mode
    */
   def startSlave() {
-    val slave = new SlaveActor(value("host"), value("port").toInt)
-    shutdown = { () => { slave.stop } } :: shutdown
-    slave.start
+    val host = value("host")
+    val port = value("port").toInt
+
+    logger.info("starting up remote slave instance on %s:%s".format(host, port))
+    RemoteNode.start(host, port)
   }
 
 

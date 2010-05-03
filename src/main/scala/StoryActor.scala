@@ -2,7 +2,6 @@ package com.shorrockin.narrator
 
 import se.scalablesolutions.akka.actor.{Actor}
 import java.util.concurrent.{ScheduledThreadPoolExecutor}
-import java.io.Serializable
 
 object Scheduler extends ScheduledThreadPoolExecutor(8) 
 
@@ -66,7 +65,7 @@ class StoryActor(val story:Story) extends Actor {
       case MainMode if (mainActions.size > 0) => mainActions.foreach { schedule(_, true) }
       case MainMode => process(StopMode)
       case StopMode if (stopActions.size > 0) => schedule(stopActions(0), true)
-      case StopMode => /* all done */
+      case StopMode => stop
     }
   }
 

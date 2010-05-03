@@ -1,8 +1,10 @@
 package com.shorrockin.narrator
 
+import _root_.utils.UniqueId
 import se.scalablesolutions.akka.actor.Actor
-import se.scalablesolutions.akka.remote.{RemoteClient, RemoteNode}
+import se.scalablesolutions.akka.remote.{RemoteNode}
 import utils.Logging
+import java.util.UUID
 
 
 /**
@@ -12,18 +14,17 @@ import utils.Logging
  *
  * @author Chris Shorrock
  */
-class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:WorkloadGenerator) extends Actor with Logging {
+class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:WorkloadGenerator) extends Actor with Logging with UniqueId {
   def this() = this("proxy-master-actor", 0, Nil, null)
 
-  private lazy val slaveActors = Map(slaves.map { (slave) =>
-    val actor = RemoteClient.actorFor("slave", slave.host, slave.port)
-    (slave -> actor)
-  }:_*)
 
+
+  private lazy val slaveActors = Map(slaves.map { (slave) =>
+    (slave -> spawnLinkRemote(classOf[SlaveActor], slave.host, slave.port))
+  }:_*)
 
   private var ready = List[Slave]()
   
-
   /**
    * called by akka to received the event
    */
@@ -43,6 +44,7 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
     logger.info("starting master actor on %s:%s".format(host, port))
     super.start
 
+    setReplyToAddress(host, port)
     RemoteNode.start(host, port)
     RemoteNode.register("master", this)
 
