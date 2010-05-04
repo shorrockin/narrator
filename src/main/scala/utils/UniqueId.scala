@@ -1,4 +1,4 @@
-package utils
+package com.shorrockin.narrator.utils
 
 import se.scalablesolutions.akka.actor.Actor
 import java.util.UUID

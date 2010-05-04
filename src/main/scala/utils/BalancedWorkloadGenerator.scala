@@ -1,4 +1,4 @@
-package utils
+package com.shorrockin.narrator.utils
 
 import com.shorrockin.narrator._
 

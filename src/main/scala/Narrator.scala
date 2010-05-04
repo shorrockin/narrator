@@ -95,7 +95,7 @@ trait Narrator extends WorkloadGenerator with Logging {
       val duration = value("duration").toLong
       
       logger.info("scheduling narrator to shutdown in %s msces".format(duration))
-      Scheduler.schedule(new Runnable() { def run() = { stop() } }, duration, TimeUnit.MILLISECONDS)
+      Scheduler.schedule(new Runnable() { def run() = { master.!(Stop)(None) } }, duration, TimeUnit.MILLISECONDS)
     }
   }
 

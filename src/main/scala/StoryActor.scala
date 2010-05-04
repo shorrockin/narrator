@@ -2,6 +2,7 @@ package com.shorrockin.narrator
 
 import se.scalablesolutions.akka.actor.{Actor}
 import java.util.concurrent.{ScheduledThreadPoolExecutor}
+import utils.UniqueId
 
 object Scheduler extends ScheduledThreadPoolExecutor(8) 
 
@@ -10,9 +11,13 @@ case object StartMode extends StoryMode
 case object MainMode  extends StoryMode
 case object StopMode  extends StoryMode
 
+
 case object Start
 case object Stop
+case class RegisterSlave(slave:SlaveActor)
 case class Perform(action:Action)
+case class StoryStatsReport(val stats:StoryStats)
+case class WorkloadStatsReport(val stats:Seq[StoryStats])
 
 /**
  * a story actor is responsible for scheduling and running the actions
@@ -20,14 +25,13 @@ case class Perform(action:Action)
  *
  * @author Chris Shorrock
  */
-class StoryActor(val story:Story) extends Actor {
+class StoryActor(val story:Story) extends Actor with UniqueId {
   import story._
 
   startActions.foreach { action =>
     if(action.interval.isDefined) throw new IllegalArgumentException("start actions may not define an interval")
     if(action.worker.isEmpty) throw new IllegalArgumentException("all actions must contain an executable block")
   }
-
 
   mainActions.foreach { action =>
     if(action.interval.isEmpty) throw new IllegalArgumentException("main actions must define an interval")
@@ -41,15 +45,19 @@ class StoryActor(val story:Story) extends Actor {
 
   private val runnables = Map(mainActions.map { (a) => a -> new ScheduledRunnable(a) }:_*)
   private var mode:Option[StoryMode] = None
+  private var slave:Option[SlaveActor] = None
+  private val stats = new StoryStats(story)
+  private var statsSent = false
 
   
   /**
    * called by akka to received the event
    */
   def receive = {
-    case Start => process(StartMode)
-    case Stop => process(StopMode)
-    case Perform(action) => perform(action)
+    case RegisterSlave(s) => slave = Some(s)
+    case Start            => process(StartMode)
+    case Stop             => process(StopMode)
+    case Perform(action)  => perform(action)
   }
 
 
@@ -65,7 +73,7 @@ class StoryActor(val story:Story) extends Actor {
       case MainMode if (mainActions.size > 0) => mainActions.foreach { schedule(_, true) }
       case MainMode => process(StopMode)
       case StopMode if (stopActions.size > 0) => schedule(stopActions(0), true)
-      case StopMode => stop
+      case StopMode => sendStatisticsToSlave()
     }
   }
 
@@ -101,9 +109,9 @@ class StoryActor(val story:Story) extends Actor {
 
     // ignore the action if we're in stop mode and it's not in stop mode action
     mode.get match {
-      case StopMode if (stopActions.contains(action)) => action.worker.get()
+      case StopMode if (stopActions.contains(action)) => stats.gather(action)
       case StopMode => /* ignore */
-      case _ => action.worker.get()
+      case _ => stats.gather(action)
     }
 
     // determines what to do next, if we're in start/stop mode then execute in
@@ -115,9 +123,20 @@ class StoryActor(val story:Story) extends Actor {
       }
       case MainMode  => schedule(action, false)
       case StopMode  => after(action, stopActions) match {
-        case None    => /* nothing all done */
+        case None    => sendStatisticsToSlave()
         case Some(a) => schedule(a, true)
       }
+    }
+  }
+
+
+  private def sendStatisticsToSlave() {
+    if (!statsSent) {
+      slave match {
+        case Some(s) => s ! StoryStatsReport(stats) ; stop
+        case None => stop
+      }
+      statsSent = true
     }
   }
 

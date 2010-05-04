@@ -10,11 +10,13 @@ class Story(val id:Int, val config:Map[String, String]) extends IntervalCreator 
   private var actions = List[Action]()
   private var _locked  = false
 
+  var description            = this.getClass.getSimpleName
   private lazy val leftRight = lock { actions.span(_.interval.isEmpty) }
   lazy val startActions      = leftRight._1
   lazy val mainActions       = leftRight._2.span(_.interval.isDefined)._1
   lazy val stopActions       = leftRight._2.span(_.interval.isDefined)._2
 
+  def allActions = actions
   def locked = _locked
   def size = actions.size
   def apply(index:Int) = actions(index)
