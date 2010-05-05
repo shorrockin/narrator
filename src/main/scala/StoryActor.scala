@@ -28,6 +28,8 @@ case class WorkloadStatsReport(val stats:Seq[StoryStats])
 class StoryActor(val story:Story) extends Actor with UniqueId {
   import story._
 
+  dispatcher = NarratorDispatchers.storyDispatcher
+
   startActions.foreach { action =>
     if(action.interval.isDefined) throw new IllegalArgumentException("start actions may not define an interval")
     if(action.worker.isEmpty) throw new IllegalArgumentException("all actions must contain an executable block")

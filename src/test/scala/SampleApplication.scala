@@ -7,7 +7,7 @@ object SampleApplication extends Narrator with BalancedWorkloadGenerator {
   def main(args:Array[String]) = init(args)
 
   
-  lazy val stories = (classOf[SampleStory], 10000, Map[String, String]()) :: Nil
+  lazy val stories = (classOf[SampleStory], 100000, Map[String, String]()) :: Nil
 
   class SampleStory(id:Int, config:Map[String, String]) extends Story(id, config) with Logging {
     var counter = 0

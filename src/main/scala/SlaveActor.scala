@@ -5,14 +5,11 @@ import org.apache.commons.lang.reflect.ConstructorUtils
 import utils.{UniqueId, Logging}
 import se.scalablesolutions.akka.remote.RemoteClient
 import java.net.InetSocketAddress
-import se.scalablesolutions.akka.dispatch.Dispatchers
 
 /**
  * slave actor is responsible for processing and executing work.
  */
 class SlaveActor extends Actor with Logging with UniqueId {
-
-  dispatcher = Dispatchers.newThreadBasedDispatcher(this)
 
   var stories:List[StoryActor]    = Nil
   var workloadStats               = List[StoryStats]()
@@ -64,7 +61,7 @@ class SlaveActor extends Actor with Logging with UniqueId {
       logger.info("all stories have been notified to start")
 
     case StoryStatsReport(stats) => {
-      logger.debug("recieved story stats report from story, current stat list is: " + statsCounter)
+      if (statsCounter == 0) logger.info("recieved statistics report from story, waiting on remaining")
       statsCounter = statsCounter + 1
       workloadStats.find { ss => ss.description.equals(stats.description) } match {
         case None    => workloadStats = stats :: workloadStats

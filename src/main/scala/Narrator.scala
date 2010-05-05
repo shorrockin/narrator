@@ -30,6 +30,10 @@ trait Narrator extends WorkloadGenerator with Logging {
                                  hasArgs()
                                  withDescription("the number of msecs that this should run before shutting down, if not specified runs forever")
                                  create("duration") } ::
+                               { withArgName("amount")
+                                 hasArgs()
+                                 withDescription("the size of the story dispatch pool. for quick stories this should be lower, if you have stories with higher execution times you may benefit from a larger value. only relevant if you're running in slave mode.")
+                                 create("dispatchers") } ::
                                { withArgName("logging level")
                                  hasArgs()
                                  withDescription("the logging level to use on the root log4j logger")
@@ -105,6 +109,12 @@ trait Narrator extends WorkloadGenerator with Logging {
   def startSlave() {
     val host = value("host")
     val port = value("port").toInt
+
+    if (exists("dispatchers")) {
+      val size = value("dispatchers").toInt
+      logger.info("overriding pool size of dispathchers with: %s".format(size))
+      NarratorDispatchers.poolSize = size
+    }
 
     logger.info("starting up remote slave instance on %s:%s".format(host, port))
     RemoteNode.start(host, port)
