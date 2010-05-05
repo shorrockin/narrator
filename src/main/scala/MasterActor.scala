@@ -3,6 +3,8 @@ package com.shorrockin.narrator
 import se.scalablesolutions.akka.actor.Actor
 import se.scalablesolutions.akka.remote.{RemoteNode}
 import utils.{UniqueId, Logging}
+import java.util.concurrent.TimeUnit
+import se.scalablesolutions.akka.dispatch.Dispatchers
 
 /**
  * the master actor acts as the coordinator of the tests, communicating
@@ -11,8 +13,8 @@ import utils.{UniqueId, Logging}
  *
  * @author Chris Shorrock
  */
-class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:WorkloadGenerator) extends Actor with Logging with UniqueId {
-  def this() = this("proxy-master-actor", 0, Nil, null)
+class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:WorkloadGenerator, duration:Option[Long]) extends Actor with Logging with UniqueId {
+  def this() = this("proxy-master-actor", 0, Nil, null, None)
 
   private lazy val slaveActors = Map(slaves.map { (slave) =>
     (slave -> spawnLinkRemote(classOf[SlaveActor], slave.host, slave.port))
@@ -29,6 +31,11 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
       ready = source :: ready
       if (ready.length == slaves.length) { slaves.foreach { slaveActors(_) ! StartWork() } }
 
+      if (duration.isDefined) {
+        logger.info("scheduling master to shutdown in %s msecs".format(duration.get.toString))
+        Scheduler.schedule(new Runnable() { def run() = { MasterActor.this.!(Stop)(None) } }, duration.get, TimeUnit.MILLISECONDS)
+      }
+
     case Stop =>
       logger.info("recieved request to stop master, notifying all slaves")
       slaveActors.foreach { actor =>
@@ -38,9 +45,17 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
 
     case WorkloadStatsReport(workloadStats) => {
       workloadStats.foreach { story =>
-        logger.info("stats for: " + story.description)
+        logger.info("Slave Story Stats: " + story.description)
         story.stats.foreach { (s) =>
-          logger.info("  \"%s\" (avg: %s, times ran: %s, max: %s, min: %s)".format(s.description, s.averageTime, s.iterations, s.maxTime, s.minTime))
+          logger.info("  " + s.description + ":")
+          logger.info("    Times Ran: %s".format(s.iterations))
+          logger.info("    Avg Request Time (msecs): %s".format(s.averageTime))
+          logger.info("    Max Request Time (msecs): %s".format(s.maxTime))
+          logger.info("    Min Request Time (msecs): %s".format(s.minTime))
+          logger.info("    Unknown Exceptions In Actions: %s".format(s.exceptions))
+          s.userExceptions.foreach { (tup) =>
+            logger.info("    User Exception (%s): %s".format(tup._1, tup._2))
+          }
         }
       }
     }

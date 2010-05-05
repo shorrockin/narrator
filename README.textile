@@ -3,7 +3,7 @@ h3. Narrator - Load Testing Through Story Telling
 |_. Primary Author|Chris Shorrock|
 |_. Home Page|"http://wiki.github.com/shorrockin/narrator/":http://wiki.github.com/shorrockin/narrator/|
 |_. Stable Version|N/A|
-|_. Snapshot Version|1.0-SNAPSHOT (useable - still under development)|
+|_. Snapshot Version|1.0-SNAPSHOT (still under development - code may change slightly until v1)|
 |_. Scala Version|2.7.7|
 
 h3. Description:
@@ -55,6 +55,7 @@ And these parts have to be coded in order. Narrator provides a simple and readab
 <code>
 class SampleStory(id:Int, config:Map[String, String]) extends Story(id, config) with Logging {
   var counter = 0
+  description = "my sample story"
 
   "start by saying hello" as {
     logger.debug("[%s] is starting up and saying 'hello world'".format(id))
@@ -90,18 +91,17 @@ Which will start a slave bound to the specified host and port. Please note that 
 
 <pre>
 <code>
-java YourApplication -host 10.10.78.113 -port 1235 -log INFO -duration 100000 -servers 10.10.78.113:1234 10.10.78.114:1234 10.10.78.115:1234
+java YourApplication -host 10.10.78.113 -port 1235 -log INFO -duration 100000 -slaves 10.10.78.113:1234 10.10.78.114:1234 10.10.78.115:1234
 </code>
 </pre>
 
 h3. Wishlist
 
  * narrator should run in a more scripted mode instead of a mode which requires application construction
- * metrics should be gathered and aggregated from all slave nodes
+ * errors should be aggregated better and be listed in statistic report
 
 h3. Known Issues
 
- * metrics gathering from slave nodes
  * requiring slaves to start before master nodes
  * number of threads used not currently configurable
 

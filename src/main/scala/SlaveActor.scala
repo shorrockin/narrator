@@ -5,17 +5,20 @@ import org.apache.commons.lang.reflect.ConstructorUtils
 import utils.{UniqueId, Logging}
 import se.scalablesolutions.akka.remote.RemoteClient
 import java.net.InetSocketAddress
+import se.scalablesolutions.akka.dispatch.Dispatchers
 
 /**
  * slave actor is responsible for processing and executing work.
  */
 class SlaveActor extends Actor with Logging with UniqueId {
+
+  dispatcher = Dispatchers.newThreadBasedDispatcher(this)
+
   var stories:List[StoryActor]    = Nil
   var workloadStats               = List[StoryStats]()
   var statsCounter                = 0
   var master:Option[Actor]        = None
   var client:Option[(String, Int)] = None
-  
 
   /**
    * called by akka to received the event
@@ -26,10 +29,15 @@ class SlaveActor extends Actor with Logging with UniqueId {
 
       workloads.foreach { workload =>
         logger.info("creating story actors for workload: " + workload)
+
+        val constructor = ConstructorUtils.getAccessibleConstructor(workload.story, Array[Class[_]](classOf[Int], classOf[Map[String, String]]))
+        if (null == constructor) {
+          logger.error("all stories must have a constructor of type Int, Map[String, String], %s does not".format(workload.story))
+          throw new IllegalArgumentException("all stories must have a constructor of type Int, Map[String, String], %s does not".format(workload.story))
+        }
+
         (workload.start until workload.end).foreach { i =>
-          val story = ConstructorUtils.invokeConstructor(workload.story,
-                                                         Array[AnyRef](i.asInstanceOf[java.lang.Integer],
-                                                         workload.params)).asInstanceOf[Story]
+          val story = constructor.newInstance(i.asInstanceOf[java.lang.Integer], workload.params).asInstanceOf[Story]
           val actor = new StoryActor(story)
           link(actor)
 
@@ -37,8 +45,10 @@ class SlaveActor extends Actor with Logging with UniqueId {
           actor.start
           actor ! RegisterSlave(this)
         }
+        logger.info("all story actors for workload created: " + workload)
       }
 
+      logger.info("notifying master node that we're ready to begin")
       client = Some(src._2 -> src._3)
       master = Some(RemoteClient.actorFor(src._1, classOf[MasterActor].getName, src._2, src._3))
       master.get ! ReadyToStart(me)
@@ -46,17 +56,24 @@ class SlaveActor extends Actor with Logging with UniqueId {
     case Stop =>
       logger.info("recieved request to stop all stories")
       stories.foreach { _ ! Stop }
+      logger.info("all stories have been requested to stop")
 
     case StartWork() =>
-      logger.info("recieved request to start doing work")
+      logger.info("recieved request to start doing work, notifying stories")
       stories.foreach { _ ! Start }
+      logger.info("all stories have been notified to start")
 
     case StoryStatsReport(stats) => {
-      logger.debug("recieved story stats report from story")
+      logger.debug("recieved story stats report from story, current stat list is: " + statsCounter)
       statsCounter = statsCounter + 1
       workloadStats.find { ss => ss.description.equals(stats.description) } match {
         case None    => workloadStats = stats :: workloadStats
         case Some(i) => i.merge(stats)
+      }
+
+      // TODO should be optionally configurable
+      if (statsCounter % 10000 == 0) {
+        logger.info("have processed %s workload reports, %s remaining".format(statsCounter, (stories.length - statsCounter)))
       }
 
       if (statsCounter >= stories.length && master.isDefined) {

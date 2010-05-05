@@ -34,15 +34,15 @@ trait Narrator extends WorkloadGenerator with Logging {
                                  hasArgs()
                                  withDescription("the logging level to use on the root log4j logger")
                                  create("log") } ::
-                               { withArgName("server list")
+                               { withArgName("slave list")
                                  hasArgs()
-                                 withDescription("a list of servers that should execute our stories. if this value is not specified that this process will act as a slave process.")
-                                 create("servers") } :: Nil
+                                 withDescription("a list of slave servers that should execute our stories. if this value is not specified that this process will act as a slave process.")
+                                 create("slaves") } :: Nil
 
   private var clOpt:Option[CommandLine] = None
   private var shutdown = List[() => Unit]()
 
-  lazy val slaves =  values("servers").map { server =>
+  lazy val slaves =  values("slaves").map { server =>
     val split = server.split(":")
     Slave(split(0), split(1).toInt)
   }
@@ -64,7 +64,7 @@ trait Narrator extends WorkloadGenerator with Logging {
         logger.setLevel(Level.toLevel(value("log")))
       }
 
-      if (exists("servers")) startMaster()
+      if (exists("slaves")) startMaster()
       else startSlave()
     } catch {
       case e:Exception =>
@@ -87,16 +87,15 @@ trait Narrator extends WorkloadGenerator with Logging {
    * starts this as a master node
    */
   def startMaster() {
-    val master = new MasterActor(value("host"), value("port").toInt, slaves, this)
+    val duration = if (exists("duration")) {
+      Some(value("duration").toLong)
+    } else {
+      None
+    }
+
+    val master = new MasterActor(value("host"), value("port").toInt, slaves, this, duration)
     shutdown = { () => { master.stop } } :: shutdown
     master.start
-
-    if (exists("duration")) {
-      val duration = value("duration").toLong
-      
-      logger.info("scheduling narrator to shutdown in %s msces".format(duration))
-      Scheduler.schedule(new Runnable() { def run() = { master.!(Stop)(None) } }, duration, TimeUnit.MILLISECONDS)
-    }
   }
 
 

@@ -1,6 +1,7 @@
 package com.shorrockin.narrator
 
 import java.io.Serializable
+import collection.mutable.HashMap
 
 /**
  * holds statistics related to the operation of an action
@@ -8,11 +9,13 @@ import java.io.Serializable
  * @author Chris Shorrock
  */
 @SerialVersionUID(1L) class ActionStats(val description:String) extends Serializable {
-  var iterations  = 0L
-  var totalTime   = 0L
-  def averageTime = noDivZero(iterations, 0) { totalTime / iterations }
-  var maxTime     = 0L
-  var minTime     = 0L
+  var iterations     = 0L
+  var totalTime      = 0L
+  def averageTime    = noDivZero(iterations, 0) { totalTime / iterations }
+  var maxTime        = 0L
+  var minTime        = 0L
+  var exceptions     = 0L
+  var userExceptions = HashMap[String, Long]()
 
   private def noDivZero(test:Long, or:Long)(f: => Long):Long = if (test == 0) or else f
 
@@ -22,14 +25,26 @@ import java.io.Serializable
    */
   def gather(action:Action) = {
     val start = System.currentTimeMillis
-    try { action.worker.get() }
-    finally {
+    try {
+      action.worker.get()
+    } catch {
+      case t:NarratorStoryException =>
+        reportUserException(t.id, 1)
+      case t:Throwable =>
+        exceptions = exceptions + 1
+        throw t
+    } finally {
       val end = System.currentTimeMillis
       iterations = iterations + 1
       totalTime  = totalTime + (end - start)
       maxTime    = if (totalTime > maxTime) totalTime else maxTime
       minTime    = if (totalTime < minTime) totalTime else minTime
     }
+  }
+
+  def reportUserException(id:String, count:Long) {
+    val current = userExceptions.getOrElseUpdate(id, 0L)
+    userExceptions.put(id, current + count)
   }
 }
 
@@ -76,8 +91,11 @@ import java.io.Serializable
           case Some(s) =>
             s.iterations = stat.iterations + s.iterations
             s.totalTime  = stat.totalTime + s.totalTime
+            s.exceptions = stat.exceptions + s.exceptions
             s.maxTime    = if (stat.maxTime > s.maxTime) stat.maxTime else s.maxTime
             s.minTime    = if (stat.minTime < s.minTime) stat.minTime else s.minTime
+
+            stat.userExceptions.foreach { (tup) => s.reportUserException(tup._1, tup._2) }
         }
       }
     } else {
