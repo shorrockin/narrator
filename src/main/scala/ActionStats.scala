@@ -2,6 +2,10 @@ package com.shorrockin.narrator
 
 import java.io.Serializable
 import collection.mutable.HashMap
+import utils.Logging
+
+object ActionStats extends Logging {
+}
 
 /**
  * holds statistics related to the operation of an action
@@ -9,6 +13,8 @@ import collection.mutable.HashMap
  * @author Chris Shorrock
  */
 @SerialVersionUID(1L) class ActionStats(val description:String) extends Serializable {
+  import ActionStats._
+
   var iterations     = 0L
   var totalTime      = 0L
   def averageTime    = noDivZero(iterations, 0) { totalTime / iterations }
@@ -32,7 +38,7 @@ import collection.mutable.HashMap
         reportUserException(t.id, 1)
       case t:Throwable =>
         exceptions = exceptions + 1
-        throw t
+        logger.error("unexpected exception in story actor: " + t.getMessage, t)
     } finally {
       val end = System.currentTimeMillis
       iterations = iterations + 1

@@ -7,7 +7,7 @@ object SampleApplication extends Narrator with BalancedWorkloadGenerator {
   def main(args:Array[String]) = init(args)
 
   
-  lazy val stories = (classOf[SampleStory], 100000, Map[String, String]()) :: Nil
+  lazy val stories = (classOf[SampleStory], 1000, Map[String, String]()) :: Nil
 
   class SampleStory(id:Int, config:Map[String, String]) extends Story(id, config) with Logging {
     var counter = 0
@@ -21,7 +21,7 @@ object SampleApplication extends Narrator with BalancedWorkloadGenerator {
       counter = counter + 1
       logger.debug("[%s] is executing this every 5 to 20 seconds, and have done so %s times before".format(id, counter))
       if (counter == 1) {
-        throw new NarratorStoryException("thrown during first run")
+        throw new IllegalArgumentException("thrown during first run")
       }
     }
 
