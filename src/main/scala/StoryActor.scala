@@ -2,9 +2,10 @@ package com.shorrockin.narrator
 
 import se.scalablesolutions.akka.actor.{Actor}
 import java.util.concurrent.{ScheduledThreadPoolExecutor}
-import utils.UniqueId
+import utils.{Logging, UniqueId}
 
-object Scheduler extends ScheduledThreadPoolExecutor(8) 
+object Scheduler extends ScheduledThreadPoolExecutor(8) {
+}
 
 trait StoryMode
 case object StartMode extends StoryMode
@@ -17,7 +18,7 @@ case object Stop
 case class RegisterSlave(slave:SlaveActor)
 case class Perform(action:Action)
 case class StoryStatsReport(val stats:StoryStats)
-case class WorkloadStatsReport(val stats:Seq[StoryStats])
+case class WorkloadStatsReport(val stats:WorkloadStats)
 
 /**
  * a story actor is responsible for scheduling and running the actions
@@ -25,8 +26,9 @@ case class WorkloadStatsReport(val stats:Seq[StoryStats])
  *
  * @author Chris Shorrock
  */
-class StoryActor(val story:Story) extends Actor with UniqueId {
+class StoryActor(val story:Story) extends Actor with UniqueId with Logging {
   import story._
+  logger.debug("creating story actor for story #" + story.id)
 
   dispatcher = NarratorDispatchers.storyDispatcher
 
@@ -45,21 +47,33 @@ class StoryActor(val story:Story) extends Actor with UniqueId {
     if(action.worker.isEmpty) throw new IllegalArgumentException("all actions must contain an executable block")
   }
 
-  private val runnables = Map(mainActions.map { (a) => a -> new ScheduledRunnable(a) }:_*)
-  private var mode:Option[StoryMode] = None
+  private val runnables                = Map(mainActions.map { (a) => a -> new ScheduledRunnable(a) }:_*)
+  private var mode:Option[StoryMode]   = None
   private var slave:Option[SlaveActor] = None
-  private val stats = new StoryStats(story)
-  private var statsSent = false
+  private val stats                    = new StoryStats(story)
+  private var statsSent                = false
 
   
   /**
    * called by akka to received the event
    */
   def receive = {
-    case RegisterSlave(s) => slave = Some(s)
-    case Start            => process(StartMode)
-    case Stop             => process(StopMode)
-    case Perform(action)  => perform(action)
+    case RegisterSlave(s) =>
+      logger.trace("registered slave with story actor #" + story.id)
+      slave = Some(s)
+
+    case Start =>
+      logger.trace("recieved request to start actor #" + story.id)
+      process(StartMode)
+
+    case Stop =>
+      logger.trace("recieved request to stop actor #" + story.id)
+      runnables.foreach { tup => Scheduler.remove(tup._2) }
+      process(StopMode)
+
+    case Perform(action) =>
+      logger.trace("recieved request to execute '" + action.description + "' on actor #" + story.id)
+      perform(action)
   }
 
 
@@ -68,6 +82,7 @@ class StoryActor(val story:Story) extends Actor with UniqueId {
    * be performed.
    */
   private def process(newMode:StoryMode):Unit = {
+    logger.trace("processing %s mode for story #%s".format(newMode, story.id))
     mode = Some(newMode)
     newMode match {
       case StartMode if (startActions.size > 0) => schedule(startActions(0), true)
@@ -139,11 +154,18 @@ class StoryActor(val story:Story) extends Actor with UniqueId {
         case None => stop
       }
       statsSent = true
+    } else {
+      logger.debug("ignoring redundant call to send statistics to slave node")
     }
   }
 
 
   class ScheduledRunnable(action:Action) extends Runnable {
-    def run() = StoryActor.this ! Perform(action)
+    def run() = {
+      mode match {
+        case Some(MainMode) => StoryActor.this ! Perform(action)
+        case _ => /* ignore */
+      }
+    }
   }
 }

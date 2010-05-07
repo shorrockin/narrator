@@ -17,13 +17,23 @@ object ActionStats extends Logging {
 
   var iterations     = 0L
   var totalTime      = 0L
-  def averageTime    = noDivZero(iterations, 0) { totalTime / iterations }
   var maxTime        = 0L
   var minTime        = 0L
   var exceptions     = 0L
   var userExceptions = HashMap[String, Long]()
 
-  private def noDivZero(test:Long, or:Long)(f: => Long):Long = if (test == 0) or else f
+  private def iterFloat = iterations.asInstanceOf[Float]
+
+  def userExceptionCount = userExceptions.foldLeft(0L) { _ + _._2 }
+  def totalExceptions    = exceptions + userExceptionCount
+  def averageTime        = noDivZero(iterations, 0F)  { totalTime / iterFloat }
+  def successRate        = noDivZero(iterations, -1F) { ((iterations - totalExceptions) / iterFloat) * 100 }
+  def totalExceptionRate = noDivZero(iterations, -1F) { (totalExceptions / iterFloat) * 100 }
+  def exceptionRate      = noDivZero(iterations, -1F) { (exceptions / iterFloat) * 100 }
+  def userExceptionRate  = noDivZero(iterations, -1F) { (userExceptionCount / iterFloat) * 100 }
+  def requestRatePerSec  = noDivZero(iterations, 0F)  { (iterFloat / (totalTime / 1000F)) }
+
+  private def noDivZero[E](test:Long, or:E)(f: => E):E = if (test == 0) or else f
 
   /**
    * executes the specified action and processes the results
@@ -107,7 +117,27 @@ object ActionStats extends Logging {
     } else {
       throw new IllegalArgumentException("unable to merge story stats of two seperate descriptions %s and %s".format(description, other.description))
     }
-
   }
-  
+}
+
+
+@SerialVersionUID(1L) class WorkloadStats extends Serializable {
+  var stats = List[StoryStats]()
+
+  def merge(other:StoryStats):WorkloadStats = {
+    stats.find { ss => ss.description.equals(other.description) } match {
+      case None    => stats = other :: stats
+      case Some(i) => i.merge(other)
+    }
+    this
+  }
+
+  def merge(other:WorkloadStats):WorkloadStats = {
+    merge(other.stats)
+  }
+
+  def merge(other:List[StoryStats]):WorkloadStats = {
+    other.foreach { merge(_) }
+    this
+  }
 }

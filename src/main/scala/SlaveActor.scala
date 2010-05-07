@@ -10,9 +10,10 @@ import java.net.InetSocketAddress
  * slave actor is responsible for processing and executing work.
  */
 class SlaveActor extends Actor with Logging with UniqueId {
+  logger.debug("creating new slave actor")
 
   var stories:List[StoryActor]    = Nil
-  var workloadStats               = List[StoryStats]()
+  var workloadStats               = new WorkloadStats
   var statsCounter                = 0
   var master:Option[Actor]        = None
   var client:Option[(String, Int)] = None
@@ -36,7 +37,6 @@ class SlaveActor extends Actor with Logging with UniqueId {
         (workload.start until workload.end).foreach { i =>
           val story = constructor.newInstance(i.asInstanceOf[java.lang.Integer], workload.params).asInstanceOf[Story]
           val actor = new StoryActor(story)
-          link(actor)
 
           stories = actor :: stories
           actor.start
@@ -51,22 +51,17 @@ class SlaveActor extends Actor with Logging with UniqueId {
       master.get ! ReadyToStart(me)
 
     case Stop =>
-      logger.info("recieved request to stop all stories")
+      logger.info("recieved request to stop all %s stories".format(stories.size))
       stories.foreach { _ ! Stop }
-      logger.info("all stories have been requested to stop")
 
     case StartWork() =>
-      logger.info("recieved request to start doing work, notifying stories")
+      logger.info("recieved request to start all %s stories".format(stories.size))
       stories.foreach { _ ! Start }
-      logger.info("all stories have been notified to start")
 
     case StoryStatsReport(stats) => {
       if (statsCounter == 0) logger.info("recieved statistics report from story, waiting on remaining")
       statsCounter = statsCounter + 1
-      workloadStats.find { ss => ss.description.equals(stats.description) } match {
-        case None    => workloadStats = stats :: workloadStats
-        case Some(i) => i.merge(stats)
-      }
+      workloadStats.merge(stats)
 
       // TODO should be optionally configurable
       if (statsCounter % 10000 == 0) {
