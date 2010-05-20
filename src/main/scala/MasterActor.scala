@@ -64,10 +64,14 @@ class MasterActor(host:String, port:Int, slaves:Seq[Slave], workGenerator:Worklo
       logger.info("Stats: " + story.description)
       story.stats.foreach { (s) =>
         logger.info("  " + s.description + ":")
+        
+        if (duration.isDefined) {
+          logger.info("    Requests / Sec: %s".format(s.iterations / (duration.get / 1000)))
+        }     
+
         logger.info("    Times Ran: %s (%s msec execution time)".format(s.iterations, s.totalTime))
         logger.info("    Success Rate: %s".format(s.successRate))
         logger.info("    Error Rate: %s (%s user, %s unexpected)".format(s.totalExceptionRate, s.userExceptionRate, s.exceptionRate))
-        logger.info("    Requests / Sec: %s".format(s.requestRatePerSec))
         logger.info("    Avg Request Time (msecs): %s".format(s.averageTime))
         logger.info("    Max Request Time (msecs): %s".format(s.maxTime))
         logger.info("    Min Request Time (msecs): %s".format(s.minTime))
